@@ -44,8 +44,108 @@ document.addEventListener('DOMContentLoaded', () => {
     "Canada": "🇨🇦",
     "United States": "🇺🇸",
     "Paraguay": "🇵🇾",
-    "Argentina": "🇦🇷"
+    "Argentina": "🇦🇷",
+    "Bosnia and Herzegovina": "🇧🇦",
+    "Qatar": "🇶🇦",
+    "Switzerland": "🇨🇭",
+    "Morocco": "🇲🇦",
+    "Sweden": "🇸🇪",
+    "Algeria": "🇩🇿",
+    "Jordan": "🇯🇴",
+    "Haiti": "🇭🇹",
+    "Germany": "🇩🇪",
+    "Uruguay": "🇺🇾",
+    "Senegal": "🇸🇳",
+    "Panama": "🇵🇦",
+    "Australia": "🇦🇺",
+    "Belgium": "🇧🇪",
+    "Iran": "🇮🇷",
+    "Croatia": "🇭🇷",
+    "Brazil": "🇧🇷",
+    "Scotland": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "Turkey": "🇹🇷",
+    "Ivory Coast": "🇨🇮",
+    "Netherlands": "🇳🇱",
+    "Cape Verde": "🇨🇻",
+    "France": "🇫🇷",
+    "Tunisia": "🇹🇳",
+    "Egypt": "🇪🇬",
+    "Iraq": "🇮🇶",
+    "Portugal": "🇵🇹",
+    "Uzbekistan": "🇺🇿",
+    "Colombia": "🇨🇴",
+    "Ecuador": "🇪🇨",
+    "Japan": "🇯🇵",
+    "New Zealand": "🇳🇿",
+    "Saudi Arabia": "🇸🇦",
+    "Austria": "🇦🇹",
+    "Ghana": "🇬🇭",
+    "Spain": "🇪🇸",
+    "Norway": "🇳🇴",
+    "Democratic Republic of the Congo": "🇨🇩",
+    "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"
   };
+
+  const nameToFifaCode = {
+    "Mexico": "MEX",
+    "South Africa": "RSA",
+    "South Korea": "KOR",
+    "Czech Republic": "CZE",
+    "Canada": "CAN",
+    "Qatar": "QAT",
+    "Switzerland": "SUI",
+    "Morocco": "MAR",
+    "Paraguay": "PAR",
+    "Curaçao": "CUW",
+    "Sweden": "SWE",
+    "Algeria": "ALG",
+    "Jordan": "JOR",
+    "Haiti": "HAI",
+    "Germany": "GER",
+    "Uruguay": "URU",
+    "Senegal": "SEN",
+    "Panama": "PAN",
+    "Bosnia and Herzegovina": "BIH",
+    "United States": "USA",
+    "Australia": "AUS",
+    "Belgium": "BEL",
+    "Iran": "IRN",
+    "Croatia": "CRO",
+    "Brazil": "BRA",
+    "Scotland": "SCO",
+    "Turkey": "TUR",
+    "Ivory Coast": "CIV",
+    "Netherlands": "NED",
+    "Cape Verde": "CPV",
+    "France": "FRA",
+    "Tunisia": "TUN",
+    "Egypt": "EGY",
+    "Iraq": "IRQ",
+    "Portugal": "POR",
+    "Uzbekistan": "UZB",
+    "Colombia": "COL",
+    "Ecuador": "ECU",
+    "Japan": "JPN",
+    "New Zealand": "NZL",
+    "Saudi Arabia": "KSA",
+    "Austria": "AUT",
+    "Ghana": "GHA",
+    "Spain": "ESP",
+    "Norway": "NOR",
+    "Argentina": "ARG",
+    "Democratic Republic of the Congo": "COD",
+    "England": "ENG"
+  };
+
+  function getFifaDisplay(teamName) {
+    if (!teamName) return "";
+    if (teamName.startsWith("Winner") || teamName.startsWith("Runner-up") || teamName.startsWith("3rd") || teamName.startsWith("Loser")) {
+      return teamName;
+    }
+    const code = nameToFifaCode[teamName] || teamName;
+    const flag = countryFlags[teamName] || "";
+    return flag ? `${flag} ${code}` : code;
+  }
 
   // Fetch all endpoints concurrently
   async function initDashboard() {
@@ -182,8 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
         scoreHtml = `<span class="ticker-score">${match.home_score} - ${match.away_score}</span>`;
       }
 
-      const homeLabel = match.home_team_name_en || match.home_team_label;
-      const awayLabel = match.away_team_name_en || match.away_team_label;
+      const homeLabel = getFifaDisplay(match.home_team_name_en || match.home_team_label);
+      const awayLabel = getFifaDisplay(match.away_team_name_en || match.away_team_label);
 
       // Determine UK Broadcaster
       const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
@@ -207,9 +307,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ${statusHtml}
           </div>
           <div class="ticker-teams">
-            <span>${homeLabel}</span>
+            <span style="font-weight: 800;">${homeLabel}</span>
             ${scoreHtml}
-            <span>${awayLabel}</span>
+            <span style="font-weight: 800;">${awayLabel}</span>
           </div>
           <div class="tv-badge ${tvBadgeClass}">${tvBadgeText}</div>
         </div>
