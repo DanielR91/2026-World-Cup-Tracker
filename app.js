@@ -34,6 +34,18 @@ document.addEventListener('DOMContentLoaded', () => {
   let playerAssistsMap = {};
   let teamIdToNameMap = {};
   let teamNameToIdMap = {};
+  let playerToCountryMap = {};
+
+  const countryFlags = {
+    "Mexico": "🇲🇽",
+    "South Korea": "🇰🇷",
+    "Czech Republic": "🇨🇿",
+    "South Africa": "🇿🇦",
+    "Canada": "🇨🇦",
+    "United States": "🇺🇸",
+    "Paraguay": "🇵🇾",
+    "Argentina": "🇦🇷"
+  };
 
   // Fetch all endpoints concurrently
   async function initDashboard() {
@@ -68,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
       teamMatrix = {};
       playerGoalsMap = {};
       playerAssistsMap = {};
+      playerToCountryMap = {};
 
       // Process match datasets
       processMatches(gamesCached);
@@ -329,24 +342,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (match.events && Array.isArray(match.events)) {
           match.events.forEach(evt => {
             if (evt.type === 'goal') {
-              if (evt.player) playerGoalsMap[evt.player] = (playerGoalsMap[evt.player] || 0) + 1;
-              if (evt.assist) playerAssistsMap[evt.assist] = (playerAssistsMap[evt.assist] || 0) + 1;
+              if (evt.player) {
+                playerGoalsMap[evt.player] = (playerGoalsMap[evt.player] || 0) + 1;
+                if (evt.team) playerToCountryMap[evt.player] = evt.team;
+              }
+              if (evt.assist) {
+                playerAssistsMap[evt.assist] = (playerAssistsMap[evt.assist] || 0) + 1;
+                if (evt.team) playerToCountryMap[evt.assist] = evt.team;
+              }
             }
           });
         } else {
           homeScorersList.forEach(scorer => {
             const name = extractPlayerName(scorer);
             playerGoalsMap[name] = (playerGoalsMap[name] || 0) + 1;
+            playerToCountryMap[name] = homeTeam;
           });
           awayScorersList.forEach(scorer => {
             const name = extractPlayerName(scorer);
             playerGoalsMap[name] = (playerGoalsMap[name] || 0) + 1;
+            playerToCountryMap[name] = awayTeam;
           });
 
           // Process Assists
           const assists = getDeterministicAssists(match, homeScorersList, awayScorersList);
           assists.forEach(assist => {
             playerAssistsMap[assist.player] = (playerAssistsMap[assist.player] || 0) + 1;
+            playerToCountryMap[assist.player] = assist.team;
           });
         }
       }
@@ -382,13 +404,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sortedScorers.length === 0) {
       topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
     } else {
-      topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => `
-        <tr>
-          <td class="rank-cell">#${index + 1}</td>
-          <td class="player-cell">${player}</td>
-          <td class="goals-cell">${goals}</td>
-        </tr>
-      `).join('');
+      topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => {
+        const country = playerToCountryMap[player];
+        const flag = country ? (countryFlags[country] || "") : "";
+        const playerDisplay = flag ? `${flag} ${player}` : player;
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell">${playerDisplay}</td>
+            <td class="goals-cell">${goals}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     // Assists Leaderboard
@@ -399,13 +426,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sortedAssisters.length === 0) {
       topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
     } else {
-      topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => `
-        <tr>
-          <td class="rank-cell">#${index + 1}</td>
-          <td class="player-cell">${player}</td>
-          <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
-        </tr>
-      `).join('');
+      topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => {
+        const country = playerToCountryMap[player];
+        const flag = country ? (countryFlags[country] || "") : "";
+        const playerDisplay = flag ? `${flag} ${player}` : player;
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell">${playerDisplay}</td>
+            <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
+          </tr>
+        `;
+      }).join('');
     }
   }
 
