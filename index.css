@@ -552,3 +552,117 @@ body {
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* Match Ticker Ribbon Styling */
+#match-ticker-ribbon {
+  width: 100%;
+  background-color: #1e293b;
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 0.75rem 1rem;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-accent) #0f172a;
+}
+
+#match-ticker-ribbon::-webkit-scrollbar {
+  height: 4px;
+}
+
+#match-ticker-ribbon::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+#match-ticker-ribbon::-webkit-scrollbar-thumb {
+  background-color: var(--primary-accent);
+  border-radius: 4px;
+}
+
+.ticker-wrapper {
+  display: inline-flex;
+  gap: 1rem;
+}
+
+.ticker-card {
+  display: inline-flex;
+  flex-direction: column;
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  min-width: 200px;
+  max-width: 220px;
+  gap: 0.25rem;
+  transition: border-color var(--transition-speed);
+}
+
+.ticker-card:hover {
+  border-color: var(--primary-accent);
+}
+
+.ticker-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ticker-status {
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-weight: 800;
+  background: var(--border-color);
+  color: var(--text-main);
+}
+
+.ticker-status.live {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--accent-green);
+}
+
+.ticker-status.completed {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+}
+
+.ticker-teams {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ticker-score {
+  font-size: 0.85rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* Pulsing Minute Icon for Live Matches */
+.pulse-live {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  animation: textPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes textPulse {
+  0%, 100% {
+    color: var(--accent-green);
+    opacity: 1;
+  }
+  50% {
+    color: var(--accent-green);
+    opacity: 0.5;
+  }
+}
+

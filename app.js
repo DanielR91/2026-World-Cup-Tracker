@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const topScorersList = document.getElementById('top-scorers-list');
   const topAssistsList = document.getElementById('top-assists-list');
+  const tickerWrapper = document.getElementById('ticker-wrapper');
 
   // Master local memory caches
   let gamesCached = [];
@@ -62,17 +63,129 @@ document.addEventListener('DOMContentLoaded', () => {
         stadiumsCached[stadium.id.toString()] = stadium;
       });
 
+      // Reset accumulators for live refreshes
+      globalStats = { totalGoals: 0, totalYellowCards: 0, totalRedCards: 0 };
+      teamMatrix = {};
+      playerGoalsMap = {};
+      playerAssistsMap = {};
+
       // Process match datasets
       processMatches(gamesCached);
       renderTournamentStats();
       populateTeamSelector();
       renderLeaderboards();
+      renderMatchTicker(gamesCached);
       setupEventListeners();
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell" style="color: var(--accent-red);">Error.</td></tr>`;
       topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell" style="color: var(--accent-red);">Error.</td></tr>`;
     }
+  }
+
+  // Format MM/DD/YYYY HH:MM to "Jun 12, 15:00"
+  function formatTickerDate(dateStr) {
+    if (!dateStr) return "";
+    const parts = dateStr.split(' ');
+    if (parts.length < 2) return dateStr;
+    const dateParts = parts[0].split('/');
+    const timeParts = parts[1].split(':');
+    if (dateParts.length < 3 || timeParts.length < 2) return dateStr;
+    
+    const date = new Date(
+      parseInt(dateParts[2]),
+      parseInt(dateParts[0]) - 1,
+      parseInt(dateParts[1]),
+      parseInt(timeParts[0]),
+      parseInt(timeParts[1])
+    );
+    
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${month} ${day}, ${hours}:${minutes}`;
+  }
+
+  // Render match ticker ribbon
+  function renderMatchTicker(matches) {
+    // Categorize
+    const liveMatches = [];
+    const scheduledMatches = [];
+    const completedMatches = [];
+
+    matches.forEach(match => {
+      const isFinished = match.finished === "TRUE" || match.time_elapsed === "finished";
+      const isLive = match.finished === "FALSE" && match.time_elapsed !== "notstarted";
+
+      if (isLive) {
+        liveMatches.push(match);
+      } else if (!isFinished) {
+        scheduledMatches.push(match);
+      } else {
+        completedMatches.push(match);
+      }
+    });
+
+    // Sort scheduled matches chronologically ascending (soonest first)
+    scheduledMatches.sort((a, b) => {
+      const dateA = new Date(a.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
+      const dateB = new Date(b.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
+      return dateA - dateB;
+    });
+
+    // Sort completed matches chronologically descending (most recent first)
+    completedMatches.sort((a, b) => {
+      const dateA = new Date(a.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
+      const dateB = new Date(b.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
+      return dateB - dateA;
+    });
+
+    // Combine in priority order
+    const sortedRibbonMatches = [...liveMatches, ...scheduledMatches, ...completedMatches];
+
+    if (sortedRibbonMatches.length === 0) {
+      tickerWrapper.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem;">No games scheduled.</span>`;
+      return;
+    }
+
+    tickerWrapper.innerHTML = sortedRibbonMatches.map(match => {
+      const isFinished = match.finished === "TRUE" || match.time_elapsed === "finished";
+      const isLive = match.finished === "FALSE" && match.time_elapsed !== "notstarted";
+      
+      let statusHtml = '';
+      let scoreHtml = '';
+
+      if (isLive) {
+        statusHtml = `<span class="ticker-status live"><span class="pulse-live">● LIVE ${match.time_elapsed}'</span></span>`;
+        scoreHtml = `<span class="ticker-score" style="color: var(--accent-green);">${match.home_score} - ${match.away_score}</span>`;
+      } else if (!isFinished) {
+        statusHtml = `<span class="ticker-status">${formatTickerDate(match.local_date)}</span>`;
+        scoreHtml = `<span class="ticker-score" style="color: var(--text-muted);">VS</span>`;
+      } else {
+        statusHtml = `<span class="ticker-status completed">FINAL</span>`;
+        scoreHtml = `<span class="ticker-score">${match.home_score} - ${match.away_score}</span>`;
+      }
+
+      const homeLabel = match.home_team_name_en || match.home_team_label;
+      const awayLabel = match.away_team_name_en || match.away_team_label;
+
+      return `
+        <div class="ticker-card">
+          <div class="ticker-card-header">
+            <span>MATCH #${match.id}</span>
+            ${statusHtml}
+          </div>
+          <div class="ticker-teams">
+            <span>${homeLabel}</span>
+            ${scoreHtml}
+            <span>${awayLabel}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   // Parse scorers string into list of scorer strings
@@ -414,4 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize
   initDashboard();
+
+  // Poll for updates every 30 seconds
+  setInterval(initDashboard, 30000);
 });
