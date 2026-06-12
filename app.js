@@ -193,6 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } catch (error) {
       console.warn('Failed to scrape live TV guide, using offline resolver:', error);
+    } finally {
+      if (gamesCached && gamesCached.length > 0) {
+        renderMatchTicker(gamesCached);
+        const selectedTeam = teamSelector.value;
+        if (selectedTeam) {
+          renderTeamMatches(selectedTeam);
+        }
+      }
     }
   }
 
@@ -239,9 +247,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fetch all endpoints concurrently
   async function initDashboard() {
+    // Start scraper in background without awaiting to avoid blocking UI loads
+    fetchLiveTvListings();
+
     try {
-      // Scrape live TV guides first, then retrieve match data
-      await fetchLiveTvListings();
 
       const [gamesRes, groupsRes, stadiumsRes] = await Promise.all([
         fetch('https://worldcup26.ir/get/games'),
