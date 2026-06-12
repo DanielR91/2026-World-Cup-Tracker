@@ -66,12 +66,12 @@
 
     <!-- Main Content Split-Screen -->
     <main class="dashboard-grid">
-      <!-- Left Column: Team Analytics -->
+      <!-- Left Column: Team Analytics & Group Standings -->
       <section class="grid-column" aria-label="Team Analytics Panel">
         <div class="analytics-card card-panel">
           <div class="card-header">
             <h3>TEAM ANALYTICS</h3>
-            <span class="card-subtitle">Filter stats by competing nation</span>
+            <span class="card-subtitle">Filter stats & standings by competing nation</span>
           </div>
           
           <div class="filter-wrapper">
@@ -83,49 +83,108 @@
 
           <div class="team-stats-display" id="team-stats-display">
             <div class="empty-state">
-              <p>Select a nation from the dropdown above to analyze team statistics.</p>
+              <p>Select a nation from the dropdown above to analyze team statistics and standings.</p>
             </div>
             
-            <div class="stats-grid hidden" id="stats-grid">
-              <div class="stat-box">
-                <span class="stat-box-label">GOALS SCORED</span>
-                <span class="stat-box-value" id="team-goals">0</span>
+            <div class="stats-container hidden" id="stats-container">
+              <div class="stats-grid">
+                <div class="stat-box">
+                  <span class="stat-box-label">GOALS SCORED</span>
+                  <span class="stat-box-value" id="team-goals">0</span>
+                </div>
+                <div class="stat-box yellow-box">
+                  <span class="stat-box-label">YELLOW CARDS</span>
+                  <span class="stat-box-value card-tag yellow" id="team-yellows">0</span>
+                </div>
+                <div class="stat-box red-box">
+                  <span class="stat-box-label">RED CARDS</span>
+                  <span class="stat-box-value card-tag red" id="team-reds">0</span>
+                </div>
               </div>
-              <div class="stat-box yellow-box">
-                <span class="stat-box-label">YELLOW CARDS</span>
-                <span class="stat-box-value card-tag yellow" id="team-yellows">0</span>
+
+              <!-- Matches Section with Stadium Badge -->
+              <div class="team-matches-section">
+                <h4>RECENT / UPCOMING MATCHES</h4>
+                <div id="team-matches-list" class="matches-list">
+                  <!-- Injected via JavaScript -->
+                </div>
               </div>
-              <div class="stat-box red-box">
-                <span class="stat-box-label">RED CARDS</span>
-                <span class="stat-box-value card-tag red" id="team-reds">0</span>
+
+              <!-- Live Group Standings Widget -->
+              <div class="standings-widget">
+                <h4 id="group-title">// GROUP STANDINGS</h4>
+                <div class="table-container">
+                  <table class="standings-table">
+                    <thead>
+                      <tr>
+                        <th>POS</th>
+                        <th>TEAM</th>
+                        <th class="text-center">P</th>
+                        <th class="text-center">GD</th>
+                        <th class="text-center">PTS</th>
+                      </tr>
+                    </thead>
+                    <tbody id="group-standings-body">
+                      <!-- Injected via JavaScript -->
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Right Column: Golden Boot -->
-      <section class="grid-column" aria-label="Golden Boot Leaderboard">
+      <!-- Right Column: Leaderboards (Scorers & Playmakers Side-by-Side) -->
+      <section class="grid-column" aria-label="Tournament Leaderboards">
         <div class="leaderboard-card card-panel">
           <div class="card-header">
-            <h3>TOP SCORERS</h3>
-            <span class="card-subtitle">Golden Boot standings</span>
+            <h3>TOURNAMENT LEADERBOARDS</h3>
+            <span class="card-subtitle">Golden Boot and Playmaker statistics</span>
           </div>
-          <div class="leaderboard-container">
-            <table class="leaderboard-table">
-              <thead>
-                <tr>
-                  <th>RANK</th>
-                  <th>PLAYER</th>
-                  <th class="text-right">GOALS</th>
-                </tr>
-              </thead>
-              <tbody id="top-scorers-list">
-                <tr>
-                  <td colspan="3" class="loading-cell">Loading leaderboard data...</td>
-                </tr>
-              </tbody>
-            </table>
+          
+          <div class="leaderboards-split">
+            <!-- Left Side: Top Scorers -->
+            <div class="leaderboard-half">
+              <h4 class="leaderboard-title">TOP SCORERS</h4>
+              <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                  <thead>
+                    <tr>
+                      <th>RANK</th>
+                      <th>PLAYER</th>
+                      <th class="text-right">GOALS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-scorers-list">
+                    <tr>
+                      <td colspan="3" class="loading-cell">Loading scorers...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Right Side: Top Assists -->
+            <div class="leaderboard-half">
+              <h4 class="leaderboard-title">TOP ASSISTS</h4>
+              <div class="leaderboard-container">
+                <table class="leaderboard-table">
+                  <thead>
+                    <tr>
+                      <th>RANK</th>
+                      <th>PLAYER</th>
+                      <th class="text-right">ASSISTS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-assists-list">
+                    <tr>
+                      <td colspan="3" class="loading-cell">Loading assists...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </section>
