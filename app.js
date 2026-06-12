@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const topCleansList = document.getElementById('top-cleans-list');
   const tickerWrapper = document.getElementById('ticker-wrapper');
   const avgGoalsMeta = document.getElementById('avg-goals-meta');
+  const avgYellowsMeta = document.getElementById('avg-yellows-meta');
+  const avgRedsMeta = document.getElementById('avg-reds-meta');
 
   // Master local memory caches
   let gamesCached = [];
@@ -518,6 +520,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const avgGoals = completedGamesCount > 0 ? (globalStats.totalGoals / completedGamesCount).toFixed(1) : "0.0";
     avgGoalsMeta.textContent = `Avg: ${avgGoals} per match`;
+
+    const avgYellows = completedGamesCount > 0 ? (globalStats.totalYellowCards / completedGamesCount).toFixed(2) : "0.00";
+    avgYellowsMeta.textContent = `Avg: ${avgYellows} per match`;
+
+    const avgReds = completedGamesCount > 0 ? (globalStats.totalRedCards / completedGamesCount).toFixed(2) : "0.00";
+    avgRedsMeta.textContent = `Avg: ${avgReds} per match`;
   }
 
   // Populate dropdown selection
