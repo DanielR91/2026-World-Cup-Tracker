@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Cup 2026 Tactical Insights</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="main-header">
+      <div class="header-content">
+        <div class="logo-area">
+          <span class="logo-accent"></span>
+          <h1>WORLD CUP 2026 TACTICAL INSIGHTS</h1>
+        </div>
+        <div class="live-indicator">
+          <span class="pulse-dot"></span>
+          <span>LIVE ANALYTICS ENGINE</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Top Metric Row -->
+    <section class="metrics-row" aria-label="Tournament Metrics Summary">
+      <div class="metric-card" id="card-goals">
+        <div class="metric-icon-wrapper">
+          <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+            <path d="M2 12h20"></path>
+          </svg>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">TOTAL TOURNAMENT GOALS</span>
+          <h2 class="metric-value" id="total-goals">—</h2>
+        </div>
+      </div>
+
+      <div class="metric-card" id="card-yellows">
+        <div class="metric-icon-wrapper yellow-accent">
+          <div class="mini-card-icon yellow"></div>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">TOTAL YELLOW CARDS</span>
+          <h2 class="metric-value" id="total-yellow-cards">—</h2>
+        </div>
+      </div>
+
+      <div class="metric-card" id="card-reds">
+        <div class="metric-icon-wrapper red-accent">
+          <div class="mini-card-icon red"></div>
+        </div>
+        <div class="metric-info">
+          <span class="metric-label">TOTAL RED CARDS</span>
+          <h2 class="metric-value" id="total-red-cards">—</h2>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Split-Screen -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Team Analytics -->
+      <section class="grid-column" aria-label="Team Analytics Panel">
+        <div class="analytics-card card-panel">
+          <div class="card-header">
+            <h3>TEAM ANALYTICS</h3>
+            <span class="card-subtitle">Filter stats by competing nation</span>
+          </div>
+          
+          <div class="filter-wrapper">
+            <label for="team-selector" class="sr-only">Select Nation</label>
+            <select id="team-selector" class="team-dropdown">
+              <option value="" disabled selected>Loading teams...</option>
+            </select>
+          </div>
+
+          <div class="team-stats-display" id="team-stats-display">
+            <div class="empty-state">
+              <p>Select a nation from the dropdown above to analyze team statistics.</p>
+            </div>
+            
+            <div class="stats-grid hidden" id="stats-grid">
+              <div class="stat-box">
+                <span class="stat-box-label">GOALS SCORED</span>
+                <span class="stat-box-value" id="team-goals">0</span>
+              </div>
+              <div class="stat-box yellow-box">
+                <span class="stat-box-label">YELLOW CARDS</span>
+                <span class="stat-box-value card-tag yellow" id="team-yellows">0</span>
+              </div>
+              <div class="stat-box red-box">
+                <span class="stat-box-label">RED CARDS</span>
+                <span class="stat-box-value card-tag red" id="team-reds">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Golden Boot -->
+      <section class="grid-column" aria-label="Golden Boot Leaderboard">
+        <div class="leaderboard-card card-panel">
+          <div class="card-header">
+            <h3>TOP SCORERS</h3>
+            <span class="card-subtitle">Golden Boot standings</span>
+          </div>
+          <div class="leaderboard-container">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>RANK</th>
+                  <th>PLAYER</th>
+                  <th class="text-right">GOALS</th>
+                </tr>
+              </thead>
+              <tbody id="top-scorers-list">
+                <tr>
+                  <td colspan="3" class="loading-cell">Loading leaderboard data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Javascript -->
+  <script src="app.js"></script>
+</body>
+</html>
