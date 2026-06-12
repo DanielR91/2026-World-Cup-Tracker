@@ -17,7 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const topScorersList = document.getElementById('top-scorers-list');
   const topAssistsList = document.getElementById('top-assists-list');
+  const topCleansList = document.getElementById('top-cleans-list');
   const tickerWrapper = document.getElementById('ticker-wrapper');
+  const avgGoalsMeta = document.getElementById('avg-goals-meta');
 
   // Master local memory caches
   let gamesCached = [];
@@ -32,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let teamMatrix = {}; // key: team name, value: { id: '', goals: 0, yellows: 0, reds: 0 }
   let playerGoalsMap = {};
   let playerAssistsMap = {};
+  let cleanSheetsMap = {};
+  let completedGamesCount = 0;
   let teamIdToNameMap = {};
   let teamNameToIdMap = {};
   let playerToCountryMap = {};
@@ -181,6 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
       playerGoalsMap = {};
       playerAssistsMap = {};
       playerToCountryMap = {};
+      cleanSheetsMap = {};
+      completedGamesCount = 0;
 
       // Process match datasets
       processMatches(gamesCached);
@@ -431,10 +437,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const awayScore = parseInt(match.away_score) || 0;
 
       if (isFinished) {
+        completedGamesCount++;
         // Goals Accumulation
         globalStats.totalGoals += (homeScore + awayScore);
         if (homeTeam && teamMatrix[homeTeam]) teamMatrix[homeTeam].goals += homeScore;
         if (awayTeam && teamMatrix[awayTeam]) teamMatrix[awayTeam].goals += awayScore;
+
+        // Clean Sheets Accumulation
+        if (homeTeam && !homeTeam.startsWith("Winner") && !homeTeam.startsWith("Runner-up") && !homeTeam.startsWith("3rd")) {
+          if (awayScore === 0) {
+            cleanSheetsMap[homeTeam] = (cleanSheetsMap[homeTeam] || 0) + 1;
+          }
+        }
+        if (awayTeam && !awayTeam.startsWith("Winner") && !awayTeam.startsWith("Runner-up") && !awayTeam.startsWith("3rd")) {
+          if (homeScore === 0) {
+            cleanSheetsMap[awayTeam] = (cleanSheetsMap[awayTeam] || 0) + 1;
+          }
+        }
 
         // Disciplinary Accumulation
         const cards = getDeterministicCards(match);
@@ -496,6 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
     totalGoalsEl.textContent = globalStats.totalGoals;
     totalYellowsEl.textContent = globalStats.totalYellowCards;
     totalRedsEl.textContent = globalStats.totalRedCards;
+
+    const avgGoals = completedGamesCount > 0 ? (globalStats.totalGoals / completedGamesCount).toFixed(1) : "0.0";
+    avgGoalsMeta.textContent = `Avg: ${avgGoals} per match`;
   }
 
   // Populate dropdown selection
@@ -551,6 +573,26 @@ document.addEventListener('DOMContentLoaded', () => {
             <td class="rank-cell">#${index + 1}</td>
             <td class="player-cell">${playerDisplay}</td>
             <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Clean Sheets Leaderboard
+    const sortedCleans = Object.entries(cleanSheetsMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (sortedCleans.length === 0) {
+      topCleansList.innerHTML = `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
+    } else {
+      topCleansList.innerHTML = sortedCleans.map(([team, cleans], index) => {
+        const display = getFifaDisplay(team);
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell" style="font-weight: 700;">${display}</td>
+            <td class="goals-cell" style="color: var(--accent-green);">${cleans}</td>
           </tr>
         `;
       }).join('');

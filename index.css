@@ -468,14 +468,8 @@ body {
 /* Table Style for Leaderboards */
 .leaderboards-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1.5rem;
-}
-
-@media (max-width: 640px) {
-  .leaderboards-split {
-    grid-template-columns: 1fr;
-  }
 }
 
 .leaderboard-half {
@@ -700,5 +694,12 @@ body {
   background-color: #1e1b4b; /* Dark indigo background */
   color: #38bdf8; /* Sleek cyan/blue branding accent */
   border: 1px solid #312e81;
+}
+
+.metric-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 0.25rem;
 }
 
