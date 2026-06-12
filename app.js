@@ -574,7 +574,8 @@ document.addEventListener('DOMContentLoaded', () => {
       let scoreHtml = '';
 
       if (isLive) {
-        statusHtml = `<span class="ticker-status live"><span class="pulse-live">● LIVE ${match.time_elapsed}'</span></span>`;
+        const timeDisplay = match.time_elapsed === 'live' ? 'LIVE' : `LIVE ${match.time_elapsed}'`;
+        statusHtml = `<span class="ticker-status live"><span class="pulse-live">● ${timeDisplay}</span></span>`;
         scoreHtml = `<span class="ticker-score" style="color: var(--accent-green);">${match.home_score} - ${match.away_score}</span>`;
       } else if (!isFinished) {
         statusHtml = `<span class="ticker-status">${formatTickerDate(match.local_date, match.stadium_id)}</span>`;
