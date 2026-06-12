@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let gamesCached = [];
   let groupsCached = [];
   let stadiumsCached = {};
+  let scrapedBroadcasters = {};
 
   let globalStats = {
     totalGoals: 0,
@@ -154,9 +155,94 @@ document.addEventListener('DOMContentLoaded', () => {
     return flag ? `${flag} ${code}` : code;
   }
 
+  // Scrape live TV listings page using AllOrigins proxy
+  async function fetchLiveTvListings() {
+    try {
+      const proxyUrl = 'https://api.allorigins.win/get?url=';
+      const targetUrl = encodeURIComponent('https://www.live-footballontv.com/live-world-cup-football-on-tv.html');
+      const response = await fetch(`${proxyUrl}${targetUrl}`);
+      if (!response.ok) throw new Error('Proxy connection failed');
+      const data = await response.json();
+      if (!data.contents) throw new Error('No scraped content received');
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(data.contents, 'text/html');
+      
+      // Select elements that typically hold fixture/tv listings on the site
+      const divs = doc.querySelectorAll('.fixture, .match, .row, tr, div');
+      divs.forEach(el => {
+        const text = el.textContent || el.innerText || "";
+        if ((text.includes("BBC") || text.includes("ITV")) && text.match(/[A-Z][a-z]+/)) {
+          let channel = "";
+          if (text.includes("BBC One") || text.includes("iPlayer")) {
+            channel = "BBC One";
+          } else if (text.includes("ITV1") || text.includes("ITVX") || text.includes("ITV")) {
+            channel = "ITV1";
+          }
+
+          if (channel) {
+            // Check if any qualified country names appear in the match element text
+            const countries = Object.keys(nameToFifaCode);
+            countries.forEach(country => {
+              if (text.includes(country)) {
+                scrapedBroadcasters[country] = channel;
+              }
+            });
+          }
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to scrape live TV guide, using offline resolver:', error);
+    }
+  }
+
+  // Broadcaster Resolver helper
+  function getBroadcasterInfo(match) {
+    const homeTeam = match.home_team_name_en;
+    const awayTeam = match.away_team_name_en;
+    
+    let channel = "";
+    if (homeTeam && scrapedBroadcasters[homeTeam]) {
+      channel = scrapedBroadcasters[homeTeam];
+    } else if (awayTeam && scrapedBroadcasters[awayTeam]) {
+      channel = scrapedBroadcasters[awayTeam];
+    }
+    
+    // Static backup resolver if scraper results are missing/unavailable
+    if (!channel) {
+      const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
+      if (group) {
+        if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
+          channel = "BBC One";
+        } else {
+          channel = "ITV1";
+        }
+      } else {
+        const matchId = parseInt(match.id) || 0;
+        channel = matchId % 2 !== 0 ? "BBC One" : "ITV1";
+      }
+    }
+    
+    let badgeClass = "bbc-style";
+    let badgeText = "📺 BBC / ITV";
+    
+    if (channel.includes("BBC One")) {
+      badgeClass = "bbc-style";
+      badgeText = "📺 BBC One / iPlayer";
+    } else if (channel.includes("ITV1")) {
+      badgeClass = "itv-style";
+      badgeText = "📺 ITV1 / ITVX";
+    }
+    
+    return { badgeClass, badgeText };
+  }
+
   // Fetch all endpoints concurrently
   async function initDashboard() {
     try {
+      // Scrape live TV guides first, then retrieve match data
+      await fetchLiveTvListings();
+
       const [gamesRes, groupsRes, stadiumsRes] = await Promise.all([
         fetch('https://worldcup26.ir/get/games'),
         fetch('https://worldcup26.ir/get/groups'),
@@ -294,20 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const homeLabel = getFifaDisplay(match.home_team_name_en || match.home_team_label);
       const awayLabel = getFifaDisplay(match.away_team_name_en || match.away_team_label);
 
-      // Determine UK Broadcaster
-      const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
-      let broadcaster = "ITV";
-      if (group) {
-        if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
-          broadcaster = "BBC";
-        }
-      } else {
-        const matchId = parseInt(match.id) || 0;
-        broadcaster = matchId % 2 !== 0 ? "BBC" : "ITV";
-      }
-
-      const tvBadgeClass = broadcaster === "BBC" ? "bbc-style" : "itv-style";
-      const tvBadgeText = broadcaster === "BBC" ? "📺 BBC One" : "📺 ITV1";
+      // Determine UK Broadcaster dynamically
+      const { badgeClass: tvBadgeClass, badgeText: tvBadgeText } = getBroadcasterInfo(match);
 
       return `
         <div class="ticker-card">
@@ -654,20 +728,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const scoreText = isFinished ? `${match.home_score} - ${match.away_score}` : "vs";
       const stageText = (match.group && match.group !== "null") ? `GROUP ${match.group}` : match.type.toUpperCase();
 
-      // Determine UK Broadcaster
-      const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
-      let broadcaster = "ITV";
-      if (group) {
-        if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
-          broadcaster = "BBC";
-        }
-      } else {
-        const matchId = parseInt(match.id) || 0;
-        broadcaster = matchId % 2 !== 0 ? "BBC" : "ITV";
-      }
-
-      const tvBadgeClass = broadcaster === "BBC" ? "bbc-style" : "itv-style";
-      const tvBadgeText = broadcaster === "BBC" ? "📺 BBC One" : "📺 ITV1";
+      // Determine UK Broadcaster dynamically
+      const { badgeClass: tvBadgeClass, badgeText: tvBadgeText } = getBroadcasterInfo(match);
 
       return `
         <div class="match-item-card">
