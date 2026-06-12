@@ -168,26 +168,48 @@ document.addEventListener('DOMContentLoaded', () => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(data.contents, 'text/html');
       
+      // Sanitizer helper for name comparisons
+      const cleanName = (name) => {
+        if (!name) return "";
+        let clean = name.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+        // Handle common variations/synonyms
+        if (clean === "turkiye" || clean === "trkiye") return "turkey";
+        if (clean === "unitedstates" || clean === "usa" || clean === "us") return "unitedstates";
+        if (clean === "czechrepublic" || clean === "czechia") return "czechrepublic";
+        return clean;
+      };
+
       // Select elements that typically hold fixture/tv listings on the site
       const divs = doc.querySelectorAll('.fixture, .match, .row, tr, div');
       divs.forEach(el => {
-        const text = el.textContent || el.innerText || "";
-        if ((text.includes("BBC") || text.includes("ITV")) && text.match(/[A-Z][a-z]+/)) {
-          let channel = "";
-          if (text.includes("BBC One") || text.includes("iPlayer")) {
-            channel = "BBC One";
-          } else if (text.includes("ITV1") || text.includes("ITVX") || text.includes("ITV")) {
-            channel = "ITV1";
+        const rawText = el.textContent || el.innerText || "";
+        const scrapedText = rawText.toUpperCase();
+        
+        if (scrapedText.includes("BBC") || scrapedText.includes("ITV")) {
+          let channel = "Check Local Listings";
+          if (scrapedText.includes("BBC")) {
+            channel = "BBC One / iPlayer";
+          } else if (scrapedText.includes("ITV")) {
+            channel = "ITV1 / ITVX";
           }
 
-          if (channel) {
-            // Check if any qualified country names appear in the match element text
-            const countries = Object.keys(nameToFifaCode);
-            countries.forEach(country => {
-              if (text.includes(country)) {
-                scrapedBroadcasters[country] = channel;
-              }
-            });
+          // Check if any qualified country names appear in the match element text
+          const countries = Object.keys(nameToFifaCode);
+          const foundTeams = [];
+          const normalizedScraped = cleanName(rawText);
+
+          countries.forEach(country => {
+            const normalizedCountry = cleanName(country);
+            if (normalizedScraped.includes(normalizedCountry)) {
+              scrapedBroadcasters[country] = channel;
+              foundTeams.push(country);
+            }
+          });
+
+          if (foundTeams.length > 0) {
+            const home = foundTeams[0] || "Unknown";
+            const away = foundTeams[1] || home;
+            console.log(`Scraped Match: ${home} vs ${away} -> Raw Channel Text: ${rawText.trim().replace(/\s+/g, ' ')}`);
           }
         }
       });
@@ -221,25 +243,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
       if (group) {
         if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
-          channel = "BBC One";
+          channel = "BBC One / iPlayer";
         } else {
-          channel = "ITV1";
+          channel = "ITV1 / ITVX";
         }
       } else {
         const matchId = parseInt(match.id) || 0;
-        channel = matchId % 2 !== 0 ? "BBC One" : "ITV1";
+        channel = matchId % 2 !== 0 ? "BBC One / iPlayer" : "ITV1 / ITVX";
       }
     }
     
     let badgeClass = "bbc-style";
     let badgeText = "📺 BBC / ITV";
     
-    if (channel.includes("BBC One")) {
+    if (channel.includes("BBC")) {
       badgeClass = "bbc-style";
-      badgeText = "📺 BBC One / iPlayer";
-    } else if (channel.includes("ITV1")) {
+      badgeText = "📺 " + channel;
+    } else if (channel.includes("ITV")) {
       badgeClass = "itv-style";
-      badgeText = "📺 ITV1 / ITVX";
+      badgeText = "📺 " + channel;
+    } else if (channel.includes("Listings")) {
+      badgeClass = "bbc-style";
+      badgeText = "📺 " + channel;
     }
     
     return { badgeClass, badgeText };
