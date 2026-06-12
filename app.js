@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let gamesCached = [];
   let groupsCached = [];
   let stadiumsCached = {};
-  let scrapedBroadcasters = {};
+  let scrapedMatches = [];
 
   let globalStats = {
     totalGoals: 0,
@@ -158,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Scrape live TV listings page using AllOrigins proxy
   async function fetchLiveTvListings() {
     try {
+      scrapedMatches = [];
       const proxyUrl = 'https://api.allorigins.win/get?url=';
       const targetUrl = encodeURIComponent('https://www.live-footballontv.com/live-world-cup-football-on-tv.html');
       const response = await fetch(`${proxyUrl}${targetUrl}`);
@@ -180,6 +181,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (clean === "bosniaandherzegovina" || clean === "bosniaherzegovina" || clean === "bosnia") return "bosniaandherzegovina";
         if (clean === "drcongo" || clean === "democraticrepublicofthecongo" || clean === "congo") return "democraticrepublicofthecongo";
         return clean;
+      };
+
+      // 1. Create a Sanitization Helper for team matching strings
+      const cleanString = (str) => {
+        if (!str) return "";
+        let clean = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        clean = clean.toLowerCase()
+          .replace(/bosnia-herzegovina|bosnia and herzegovina/g, 'bosniaandherzegovina')
+          .replace(/dr congo|democratic republic of the congo/g, 'democraticrepublicofthecongo')
+          .replace(/turkiye/g, 'turkey')
+          .replace(/czech republic/g, 'czechrepublic');
+        return clean.replace(/[\s\.]v(s)?[\s\.]/g, ' ').replace(/\s+/g, ' ').trim();
       };
 
       // Select elements that typically hold fixture/tv listings on the site (avoid outer div selection)
@@ -210,6 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
           channel = "Check Local Listings";
         }
 
+        // Cache the raw fixture row details and channel
+        scrapedMatches.push({
+          teamsText: teamsText || el.textContent,
+          channel: channel
+        });
+
         // Check if any qualified country names appear in the match element text
         const countries = Object.keys(nameToFifaCode);
         const foundTeams = [];
@@ -222,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
                           (splitTeams.length > 0 && splitTeams.some(t => t.includes(normalizedCountry) || normalizedCountry.includes(t))) ||
                           normalizedScraped.includes(normalizedCountry);
           if (isMatch) {
-            scrapedBroadcasters[country] = channel;
             foundTeams.push(country);
           }
         });
@@ -252,10 +270,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const awayTeam = match.away_team_name_en;
     
     let channel = "";
-    if (homeTeam && scrapedBroadcasters[homeTeam]) {
-      channel = scrapedBroadcasters[homeTeam];
-    } else if (awayTeam && scrapedBroadcasters[awayTeam]) {
-      channel = scrapedBroadcasters[awayTeam];
+    if (homeTeam && awayTeam) {
+      const cleanString = (str) => {
+        if (!str) return "";
+        let clean = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        clean = clean.toLowerCase()
+          .replace(/bosnia-herzegovina|bosnia and herzegovina/g, 'bosniaandherzegovina')
+          .replace(/dr congo|democratic republic of the congo/g, 'democraticrepublicofthecongo')
+          .replace(/turkiye/g, 'turkey')
+          .replace(/czech republic/g, 'czechrepublic');
+        return clean.replace(/[\s\.]v(s)?[\s\.]/g, ' ').replace(/\s+/g, ' ').trim();
+      };
+
+      const cleanHome = cleanString(homeTeam);
+      const cleanAway = cleanString(awayTeam);
+
+      // Check if BOTH team name tokens are present in the text block using an .includes() rule
+      const matched = scrapedMatches.find(item => {
+        const cleanScraped = cleanString(item.teamsText);
+        return cleanScraped.includes(cleanHome) && cleanScraped.includes(cleanAway);
+      });
+
+      if (matched) {
+        channel = matched.channel;
+      }
     }
     
     // Static backup resolver if scraper results are missing/unavailable
