@@ -298,16 +298,101 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Static backup resolver if scraper results are missing/unavailable
     if (!channel) {
-      const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
-      if (group) {
-        if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
-          channel = "BBC One / iPlayer";
-        } else {
-          channel = "ITV1 / ITVX";
-        }
+      const staticResolver = {
+        "ghana_england": "BBC One / iPlayer",
+        "england_ghana": "BBC One / iPlayer",
+        "panama_croatia": "BBC One / iPlayer",
+        "croatia_panama": "BBC One / iPlayer",
+        "canada_bosniaandherzegovina": "BBC One / iPlayer",
+        "bosniaandherzegovina_canada": "BBC One / iPlayer",
+        "unitedstates_paraguay": "BBC One / iPlayer",
+        "paraguay_unitedstates": "BBC One / iPlayer",
+        "morocco_brazil": "BBC One / iPlayer",
+        "brazil_morocco": "BBC One / iPlayer",
+        "haiti_scotland": "BBC One / iPlayer",
+        "scotland_haiti": "BBC One / iPlayer",
+        "ivorycoast_ecuador": "BBC One / iPlayer",
+        "ecuador_ivorycoast": "BBC One / iPlayer",
+        "belgium_egypt": "BBC One / iPlayer",
+        "egypt_belgium": "BBC One / iPlayer",
+        "iran_newzealand": "BBC One / iPlayer",
+        "newzealand_iran": "BBC One / iPlayer",
+        "senegal_france": "BBC One / iPlayer",
+        "france_senegal": "BBC One / iPlayer",
+        "iraq_norway": "BBC One / iPlayer",
+        "norway_iraq": "BBC One / iPlayer",
+        "jordan_austria": "BBC One / iPlayer",
+        "austria_jordan": "BBC One / iPlayer",
+        "portugal_democraticrepublicofthecongo": "BBC One / iPlayer",
+        "democraticrepublicofthecongo_portugal": "BBC One / iPlayer",
+        "uzbekistan_colombia": "BBC One / iPlayer",
+        "colombia_uzbekistan": "BBC One / iPlayer",
+        "southafrica_czechrepublic": "BBC One / iPlayer",
+        "czechrepublic_southafrica": "BBC One / iPlayer",
+        "mexico_southkorea": "BBC One / iPlayer",
+        "southkorea_mexico": "BBC One / iPlayer",
+        "unitedstates_australia": "BBC One / iPlayer",
+        "australia_unitedstates": "BBC One / iPlayer",
+        "sweden_netherlands": "BBC One / iPlayer",
+        "netherlands_sweden": "BBC One / iPlayer",
+        "curacao_ecuador": "BBC One / iPlayer",
+        "ecuador_curacao": "BBC One / iPlayer",
+        "tunisia_japan": "BBC One / iPlayer",
+        "japan_tunisia": "BBC One / iPlayer",
+        "saudiarabia_spain": "BBC One / iPlayer",
+        "spain_saudiarabia": "BBC One / iPlayer",
+        "uruguay_capeverde": "BBC One / iPlayer",
+        "capeverde_uruguay": "BBC One / iPlayer",
+        "austria_argentina": "BBC One / iPlayer",
+        "argentina_austria": "BBC One / iPlayer",
+        "france_iraq": "BBC One / iPlayer",
+        "iraq_france": "BBC One / iPlayer",
+        "morocco_haiti": "BBC One / iPlayer",
+        "haiti_morocco": "BBC One / iPlayer",
+        "brazil_scotland": "BBC One / iPlayer",
+        "scotland_brazil": "BBC One / iPlayer",
+        "mexico_czechrepublic": "BBC One / iPlayer",
+        "czechrepublic_mexico": "BBC One / iPlayer",
+        "southafrica_southkorea": "BBC One / iPlayer",
+        "southkorea_southafrica": "BBC One / iPlayer",
+        "curacao_ivorycoast": "BBC One / iPlayer",
+        "ivorycoast_curacao": "BBC One / iPlayer",
+        "germany_ecuador": "BBC One / iPlayer",
+        "ecuador_germany": "BBC One / iPlayer",
+        "sweden_japan": "BBC One / iPlayer",
+        "japan_sweden": "BBC One / iPlayer",
+        "netherlands_tunisia": "BBC One / iPlayer",
+        "tunisia_netherlands": "BBC One / iPlayer",
+        "iran_egypt": "BBC One / iPlayer",
+        "egypt_iran": "BBC One / iPlayer",
+        "belgium_newzealand": "BBC One / iPlayer",
+        "newzealand_belgium": "BBC One / iPlayer",
+        "portugal_colombia": "BBC One / iPlayer",
+        "colombia_portugal": "BBC One / iPlayer",
+        "uzbekistan_democraticrepublicofthecongo": "BBC One / iPlayer",
+        "democraticrepublicofthecongo_uzbekistan": "BBC One / iPlayer",
+        "algeria_austria": "BBC One / iPlayer",
+        "austria_algeria": "BBC One / iPlayer",
+        "jordan_argentina": "BBC One / iPlayer",
+        "argentina_jordan": "BBC One / iPlayer"
+      };
+
+      const cleanStringSimple = (str) => {
+        if (!str) return "";
+        let clean = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        clean = clean.toLowerCase()
+          .replace(/bosnia-herzegovina|bosnia and herzegovina/g, 'bosniaandherzegovina')
+          .replace(/dr congo|democratic republic of the congo/g, 'democraticrepublicofthecongo')
+          .replace(/turkiye/g, 'turkey')
+          .replace(/czech republic/g, 'czechrepublic');
+        return clean.replace(/[\s\.]v(s)?[\s\.]/g, '').replace(/\s+/g, '').trim();
+      };
+
+      if (homeTeam && awayTeam) {
+        const key = `${cleanStringSimple(homeTeam)}_${cleanStringSimple(awayTeam)}`;
+        channel = staticResolver[key] || "ITV1 / ITVX";
       } else {
-        const matchId = parseInt(match.id) || 0;
-        channel = matchId % 2 !== 0 ? "BBC One / iPlayer" : "ITV1 / ITVX";
+        channel = "ITV1 / ITVX";
       }
     }
     
