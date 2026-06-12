@@ -468,30 +468,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Format MM/DD/YYYY HH:MM to "Jun 12, 15:00"
-  function formatTickerDate(dateStr) {
-    if (!dateStr) return "";
+  const stadiumOffsets = {
+    "1": -6,  // Mexico City (Mexico) -> UTC-6
+    "2": -6,  // Guadalajara (Mexico) -> UTC-6
+    "3": -6,  // Monterrey (Mexico) -> UTC-6
+    "4": -5,  // Dallas (CDT) -> UTC-5
+    "5": -5,  // Houston (CDT) -> UTC-5
+    "6": -5,  // Kansas City (CDT) -> UTC-5
+    "7": -4,  // Atlanta (EDT) -> UTC-4
+    "8": -4,  // Miami (EDT) -> UTC-4
+    "9": -4,  // Boston (EDT) -> UTC-4
+    "10": -4, // Philadelphia (EDT) -> UTC-4
+    "11": -4, // New York (EDT) -> UTC-4
+    "12": -4, // Toronto (EDT) -> UTC-4
+    "13": -7, // Vancouver (PDT) -> UTC-7
+    "14": -7, // Seattle (PDT) -> UTC-7
+    "15": -7, // San Francisco (PDT) -> UTC-7
+    "16": -7  // Los Angeles (PDT) -> UTC-7
+  };
+
+  // Convert raw API local_date to Date object in UK timezone (Europe/London)
+  function parseMatchDateToUK(dateStr, stadiumId) {
+    if (!dateStr) return new Date();
     const parts = dateStr.split(' ');
-    if (parts.length < 2) return dateStr;
+    if (parts.length < 2) return new Date(dateStr);
     const dateParts = parts[0].split('/');
     const timeParts = parts[1].split(':');
-    if (dateParts.length < 3 || timeParts.length < 2) return dateStr;
+    if (dateParts.length < 3 || timeParts.length < 2) return new Date(dateStr);
     
-    const date = new Date(
-      parseInt(dateParts[2]),
-      parseInt(dateParts[0]) - 1,
-      parseInt(dateParts[1]),
-      parseInt(timeParts[0]),
-      parseInt(timeParts[1])
-    );
+    const year = parseInt(dateParts[2]);
+    const month = parseInt(dateParts[0]) - 1;
+    const day = parseInt(dateParts[1]);
+    const hours = parseInt(timeParts[0]);
+    const minutes = parseInt(timeParts[1]);
     
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[date.getMonth()];
-    const day = date.getDate();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const offset = stadiumOffsets[stadiumId ? stadiumId.toString() : ""] || 0;
+    const utcTimeMs = Date.UTC(year, month, day, hours - offset, minutes);
+    return new Date(utcTimeMs);
+  }
+
+  // Format a Date object to clean UK local string: "Jun 12, 15:00"
+  function formatUKDate(date) {
+    const optionsDate = { month: 'short', day: 'numeric', timeZone: 'Europe/London' };
+    const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/London' };
     
-    return `${month} ${day}, ${hours}:${minutes}`;
+    const dateStr = date.toLocaleDateString('en-GB', optionsDate);
+    const timeStr = date.toLocaleTimeString('en-GB', optionsTime);
+    
+    return `${dateStr}, ${timeStr}`;
+  }
+
+  // Format MM/DD/YYYY HH:MM to "Jun 12, 15:00" in UK local time
+  function formatTickerDate(dateStr, stadiumId) {
+    const date = parseMatchDateToUK(dateStr, stadiumId);
+    return formatUKDate(date);
   }
 
   // Render match ticker ribbon
@@ -516,15 +546,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Sort scheduled matches chronologically ascending (soonest first)
     scheduledMatches.sort((a, b) => {
-      const dateA = new Date(a.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
-      const dateB = new Date(b.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
+      const dateA = parseMatchDateToUK(a.local_date, a.stadium_id);
+      const dateB = parseMatchDateToUK(b.local_date, b.stadium_id);
       return dateA - dateB;
     });
 
     // Sort completed matches chronologically descending (most recent first)
     completedMatches.sort((a, b) => {
-      const dateA = new Date(a.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
-      const dateB = new Date(b.local_date.replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2'));
+      const dateA = parseMatchDateToUK(a.local_date, a.stadium_id);
+      const dateB = parseMatchDateToUK(b.local_date, b.stadium_id);
       return dateB - dateA;
     });
 
@@ -547,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusHtml = `<span class="ticker-status live"><span class="pulse-live">● LIVE ${match.time_elapsed}'</span></span>`;
         scoreHtml = `<span class="ticker-score" style="color: var(--accent-green);">${match.home_score} - ${match.away_score}</span>`;
       } else if (!isFinished) {
-        statusHtml = `<span class="ticker-status">${formatTickerDate(match.local_date)}</span>`;
+        statusHtml = `<span class="ticker-status">${formatTickerDate(match.local_date, match.stadium_id)}</span>`;
         scoreHtml = `<span class="ticker-score" style="color: var(--text-muted);">VS</span>`;
       } else {
         statusHtml = `<span class="ticker-status completed">FINAL</span>`;
@@ -913,7 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="match-header-line">
             <span class="match-stage-badge">${stageText}</span>
             <div class="tv-badge ${tvBadgeClass}" style="margin-top: 0; font-size: 0.6rem; padding: 0.1rem 0.35rem;">${tvBadgeText}</div>
-            <span>${match.local_date}</span>
+            <span>${formatTickerDate(match.local_date, match.stadium_id)}</span>
           </div>
           <div class="match-score-row">
             <span class="match-team-name ${match.home_team_name_en === teamName ? 'primary-accent' : ''}">${match.home_team_name_en}</span>
