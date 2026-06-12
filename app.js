@@ -171,46 +171,66 @@ document.addEventListener('DOMContentLoaded', () => {
       // Sanitizer helper for name comparisons
       const cleanName = (name) => {
         if (!name) return "";
-        let clean = name.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+        let clean = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        clean = clean.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
         // Handle common variations/synonyms
-        if (clean === "turkiye" || clean === "trkiye") return "turkey";
+        if (clean === "turkiye" || clean === "trkiye" || clean === "turkey") return "turkey";
         if (clean === "unitedstates" || clean === "usa" || clean === "us") return "unitedstates";
         if (clean === "czechrepublic" || clean === "czechia") return "czechrepublic";
+        if (clean === "bosniaandherzegovina" || clean === "bosniaherzegovina" || clean === "bosnia") return "bosniaandherzegovina";
+        if (clean === "drcongo" || clean === "democraticrepublicofthecongo" || clean === "congo") return "democraticrepublicofthecongo";
         return clean;
       };
 
-      // Select elements that typically hold fixture/tv listings on the site
-      const divs = doc.querySelectorAll('.fixture, .match, .row, tr, div');
-      divs.forEach(el => {
-        const rawText = el.textContent || el.innerText || "";
-        const scrapedText = rawText.toUpperCase();
+      // Select elements that typically hold fixture/tv listings on the site (avoid outer div selection)
+      const fixtures = doc.querySelectorAll('.fixture, .match, .row, tr');
+      fixtures.forEach(el => {
+        const teamsEl = el.querySelector('.fixture__teams, .teams, .match__teams');
+        const teamsText = teamsEl ? (teamsEl.textContent || teamsEl.innerText || "") : "";
         
-        if (scrapedText.includes("BBC") || scrapedText.includes("ITV")) {
-          let channel = "Check Local Listings";
-          if (scrapedText.includes("BBC")) {
-            channel = "BBC One / iPlayer";
-          } else if (scrapedText.includes("ITV")) {
-            channel = "ITV1 / ITVX";
-          }
-
-          // Check if any qualified country names appear in the match element text
-          const countries = Object.keys(nameToFifaCode);
-          const foundTeams = [];
-          const normalizedScraped = cleanName(rawText);
-
-          countries.forEach(country => {
-            const normalizedCountry = cleanName(country);
-            if (normalizedScraped.includes(normalizedCountry)) {
-              scrapedBroadcasters[country] = channel;
-              foundTeams.push(country);
-            }
+        const channelEl = el.querySelector('.fixture__channel, .channels, .channel, .broadcast');
+        let rawChannelText = "";
+        if (channelEl) {
+          rawChannelText = (channelEl.textContent || "") + " " + (channelEl.className || "");
+          channelEl.querySelectorAll('*').forEach(child => {
+            rawChannelText += " " + (child.textContent || "") + " " + (child.className || "");
           });
+        } else {
+          rawChannelText = el.textContent || el.innerText || "";
+        }
+        
+        const scrapedText = rawChannelText.toUpperCase();
+        
+        let channel = "Check Local Listings";
+        if (scrapedText.includes("BBC")) {
+          channel = "BBC One / iPlayer";
+        } else if (scrapedText.includes("ITV")) {
+          channel = "ITV1 / ITVX";
+        } else {
+          channel = "Check Local Listings";
+        }
 
-          if (foundTeams.length > 0) {
-            const home = foundTeams[0] || "Unknown";
-            const away = foundTeams[1] || home;
-            console.log(`Scraped Match: ${home} vs ${away} -> Raw Channel Text: ${rawText.trim().replace(/\s+/g, ' ')}`);
+        // Check if any qualified country names appear in the match element text
+        const countries = Object.keys(nameToFifaCode);
+        const foundTeams = [];
+        const normalizedScraped = cleanName(teamsText || el.textContent);
+        const splitTeams = (teamsText || el.textContent || "").split(/\s+v\s+|\s+vs\s+/i).map(t => cleanName(t));
+
+        countries.forEach(country => {
+          const normalizedCountry = cleanName(country);
+          const isMatch = splitTeams.some(t => t === normalizedCountry) || 
+                          (splitTeams.length > 0 && splitTeams.some(t => t.includes(normalizedCountry) || normalizedCountry.includes(t))) ||
+                          normalizedScraped.includes(normalizedCountry);
+          if (isMatch) {
+            scrapedBroadcasters[country] = channel;
+            foundTeams.push(country);
           }
+        });
+
+        if (foundTeams.length > 0) {
+          const home = foundTeams[0] || "Unknown";
+          const away = foundTeams[1] || home;
+          console.log(`Scraped Match: ${home} vs ${away} -> Raw Channel Text: ${scrapedText}`);
         }
       });
     } catch (error) {
