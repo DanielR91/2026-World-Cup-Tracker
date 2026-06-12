@@ -617,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .slice(0, 5);
 
     if (sortedAggressive.length === 0) {
-      topAggressiveList.innerHTML = `<tr><td colspan="3" class="loading-cell">No card weights.</td></tr>`;
+      topAggressiveList.innerHTML = `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
     } else {
       topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
         const display = getFifaDisplay(team);
@@ -625,7 +625,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <tr>
             <td class="rank-cell">#${index + 1}</td>
             <td class="player-cell" style="font-weight: 700;">${display}</td>
-            <td class="goals-cell" style="color: var(--accent-red);">${pts}</td>
           </tr>
         `;
       }).join('');
