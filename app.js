@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const topScorersList = document.getElementById('top-scorers-list');
   const topAssistsList = document.getElementById('top-assists-list');
   const topCleansList = document.getElementById('top-cleans-list');
+  const topAggressiveList = document.getElementById('top-aggressive-list');
   const tickerWrapper = document.getElementById('ticker-wrapper');
   const avgGoalsMeta = document.getElementById('avg-goals-meta');
   const avgYellowsMeta = document.getElementById('avg-yellows-meta');
@@ -601,6 +602,30 @@ document.addEventListener('DOMContentLoaded', () => {
             <td class="rank-cell">#${index + 1}</td>
             <td class="player-cell" style="font-weight: 700;">${display}</td>
             <td class="goals-cell" style="color: var(--accent-green);">${cleans}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Most Aggressive Leaderboard
+    const sortedAggressive = Object.entries(teamMatrix)
+      .map(([teamName, stats]) => {
+        const pts = stats.yellows + (stats.reds * 3);
+        return [teamName, pts];
+      })
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (sortedAggressive.length === 0) {
+      topAggressiveList.innerHTML = `<tr><td colspan="3" class="loading-cell">No card weights.</td></tr>`;
+    } else {
+      topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
+        const display = getFifaDisplay(team);
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell" style="font-weight: 700;">${display}</td>
+            <td class="goals-cell" style="color: var(--accent-red);">${pts}</td>
           </tr>
         `;
       }).join('');

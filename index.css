@@ -468,8 +468,14 @@ body {
 /* Table Style for Leaderboards */
 .leaderboards-split {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .leaderboards-split {
+    grid-template-columns: 1fr;
+  }
 }
 
 .leaderboard-half {
