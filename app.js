@@ -654,10 +654,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const scoreText = isFinished ? `${match.home_score} - ${match.away_score}` : "vs";
       const stageText = (match.group && match.group !== "null") ? `GROUP ${match.group}` : match.type.toUpperCase();
 
+      // Determine UK Broadcaster
+      const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
+      let broadcaster = "ITV";
+      if (group) {
+        if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
+          broadcaster = "BBC";
+        }
+      } else {
+        const matchId = parseInt(match.id) || 0;
+        broadcaster = matchId % 2 !== 0 ? "BBC" : "ITV";
+      }
+
+      const tvBadgeClass = broadcaster === "BBC" ? "bbc-style" : "itv-style";
+      const tvBadgeText = broadcaster === "BBC" ? "📺 BBC One" : "📺 ITV1";
+
       return `
         <div class="match-item-card">
           <div class="match-header-line">
             <span class="match-stage-badge">${stageText}</span>
+            <div class="tv-badge ${tvBadgeClass}" style="margin-top: 0; font-size: 0.6rem; padding: 0.1rem 0.35rem;">${tvBadgeText}</div>
             <span>${match.local_date}</span>
           </div>
           <div class="match-score-row">
