@@ -676,3 +676,29 @@ body {
   }
 }
 
+/* TV Broadcaster Badge Styling */
+.tv-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  margin-top: 0.25rem;
+  box-sizing: border-box;
+}
+
+.tv-badge.bbc-style {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #334155;
+}
+
+.tv-badge.itv-style {
+  background-color: #1e1b4b; /* Dark indigo background */
+  color: #38bdf8; /* Sleek cyan/blue branding accent */
+  border: 1px solid #312e81;
+}
+

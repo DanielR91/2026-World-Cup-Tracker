@@ -185,6 +185,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const homeLabel = match.home_team_name_en || match.home_team_label;
       const awayLabel = match.away_team_name_en || match.away_team_label;
 
+      // Determine UK Broadcaster
+      const group = (match.group && match.group !== "null") ? match.group.toUpperCase() : "";
+      let broadcaster = "ITV";
+      if (group) {
+        if (["A", "B", "E", "F", "G", "J", "K"].includes(group)) {
+          broadcaster = "BBC";
+        }
+      } else {
+        const matchId = parseInt(match.id) || 0;
+        broadcaster = matchId % 2 !== 0 ? "BBC" : "ITV";
+      }
+
+      const tvBadgeClass = broadcaster === "BBC" ? "bbc-style" : "itv-style";
+      const tvBadgeText = broadcaster === "BBC" ? "📺 BBC One" : "📺 ITV1";
+
       return `
         <div class="ticker-card">
           <div class="ticker-card-header">
@@ -196,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${scoreHtml}
             <span>${awayLabel}</span>
           </div>
+          <div class="tv-badge ${tvBadgeClass}">${tvBadgeText}</div>
         </div>
       `;
     }).join('');
