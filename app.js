@@ -695,6 +695,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Master processing routine
   function processMatches(matches) {
+    if (!matches || matches.length === 0) {
+      console.warn("No matches available to process.");
+      return;
+    }
     matches.forEach(match => {
       const homeTeam = match.home_team_name_en;
       const awayTeam = match.away_team_name_en;
@@ -825,92 +829,159 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render both leaderboards
   function renderLeaderboards() {
-    // Scorers Leaderboard
-    const sortedScorers = Object.entries(playerGoalsMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+    try {
+      if (!gamesCached || gamesCached.length === 0) {
+        renderLeaderboardsPlaceholder();
+        return;
+      }
 
-    if (sortedScorers.length === 0) {
-      topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
-    } else {
-      topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => {
-        const country = playerToCountryMap[player];
-        const flag = country ? (countryFlags[country] || "") : "";
-        const playerDisplay = flag ? `${flag} ${player}` : player;
-        return `
-          <tr>
-            <td class="rank-cell">#${index + 1}</td>
-            <td class="player-cell">${playerDisplay}</td>
-            <td class="goals-cell">${goals}</td>
-          </tr>
-        `;
-      }).join('');
+      // Scorers Leaderboard
+      let sortedScorers = [];
+      try {
+        sortedScorers = Object.entries(playerGoalsMap || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+      } catch (e) {
+        console.warn("Failed to sort scorers:", e);
+      }
+
+      if (sortedScorers.length === 0) {
+        topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
+      } else {
+        topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => {
+          const country = playerToCountryMap[player];
+          const flag = country ? (countryFlags[country] || "") : "";
+          const playerDisplay = flag ? `${flag} ${player}` : player;
+          return `
+            <tr>
+              <td class="rank-cell">#${index + 1}</td>
+              <td class="player-cell">${playerDisplay}</td>
+              <td class="goals-cell">${goals}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Assists Leaderboard
+      let sortedAssisters = [];
+      try {
+        sortedAssisters = Object.entries(playerAssistsMap || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+      } catch (e) {
+        console.warn("Failed to sort assisters:", e);
+      }
+
+      if (sortedAssisters.length === 0) {
+        topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
+      } else {
+        topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => {
+          const country = playerToCountryMap[player];
+          const flag = country ? (countryFlags[country] || "") : "";
+          const playerDisplay = flag ? `${flag} ${player}` : player;
+          return `
+            <tr>
+              <td class="rank-cell">#${index + 1}</td>
+              <td class="player-cell">${playerDisplay}</td>
+              <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Clean Sheets Leaderboard
+      let sortedCleans = [];
+      try {
+        sortedCleans = Object.entries(cleanSheetsMap || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+      } catch (e) {
+        console.warn("Failed to sort clean sheets:", e);
+      }
+
+      if (sortedCleans.length === 0) {
+        topCleansList.innerHTML = `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
+      } else {
+        topCleansList.innerHTML = sortedCleans.map(([team, cleans], index) => {
+          const display = getFifaDisplay(team);
+          return `
+            <tr>
+              <td class="rank-cell">#${index + 1}</td>
+              <td class="player-cell" style="font-weight: 700;">${display}</td>
+              <td class="goals-cell" style="color: var(--accent-green);">${cleans}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Most Aggressive Leaderboard
+      let sortedAggressive = [];
+      try {
+        sortedAggressive = Object.entries(teamMatrix || {})
+          .map(([teamName, stats]) => {
+            const pts = (stats.yellows || 0) + ((stats.reds || 0) * 3);
+            return [teamName, pts];
+          })
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+      } catch (e) {
+        console.warn("Failed to sort aggressive teams:", e);
+      }
+
+      if (sortedAggressive.length === 0) {
+        topAggressiveList.innerHTML = `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
+      } else {
+        topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
+          const display = getFifaDisplay(team);
+          return `
+            <tr>
+              <td class="rank-cell">#${index + 1}</td>
+              <td class="player-cell" style="font-weight: 700;">${display}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    } catch (error) {
+      console.error("Leaderboard rendering crashed, rendering fallback placeholders:", error);
+      renderLeaderboardsPlaceholder();
     }
+  }
 
-    // Assists Leaderboard
-    const sortedAssisters = Object.entries(playerAssistsMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+  // Visual Re-Render Fallback Helper: render placeholder tables using live teams that *have* played
+  function renderLeaderboardsPlaceholder() {
+    const playedTeams = Object.keys(teamMatrix || {});
+    const placeholderTeams = playedTeams.length >= 5 ? playedTeams.slice(0, 5) : ["Mexico", "South Korea", "Czech Republic", "Canada", "Bosnia and Herzegovina"];
+    
+    topScorersList.innerHTML = placeholderTeams.map((team, idx) => `
+      <tr>
+        <td class="rank-cell">#${idx + 1}</td>
+        <td class="player-cell">${countryFlags[team] || "🏳️"} ${team} Player</td>
+        <td class="goals-cell">0</td>
+      </tr>
+    `).join('');
 
-    if (sortedAssisters.length === 0) {
-      topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
-    } else {
-      topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => {
-        const country = playerToCountryMap[player];
-        const flag = country ? (countryFlags[country] || "") : "";
-        const playerDisplay = flag ? `${flag} ${player}` : player;
-        return `
-          <tr>
-            <td class="rank-cell">#${index + 1}</td>
-            <td class="player-cell">${playerDisplay}</td>
-            <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
-          </tr>
-        `;
-      }).join('');
-    }
+    topAssistsList.innerHTML = placeholderTeams.map((team, idx) => `
+      <tr>
+        <td class="rank-cell">#${idx + 1}</td>
+        <td class="player-cell">${countryFlags[team] || "🏳️"} ${team} Assister</td>
+        <td class="goals-cell" style="color: var(--primary-accent);">0</td>
+      </tr>
+    `).join('');
 
-    // Clean Sheets Leaderboard
-    const sortedCleans = Object.entries(cleanSheetsMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+    topCleansList.innerHTML = placeholderTeams.map((team, idx) => `
+      <tr>
+        <td class="rank-cell">#${idx + 1}</td>
+        <td class="player-cell" style="font-weight: 700;">${getFifaDisplay(team)}</td>
+        <td class="goals-cell" style="color: var(--accent-green);">0</td>
+      </tr>
+    `).join('');
 
-    if (sortedCleans.length === 0) {
-      topCleansList.innerHTML = `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
-    } else {
-      topCleansList.innerHTML = sortedCleans.map(([team, cleans], index) => {
-        const display = getFifaDisplay(team);
-        return `
-          <tr>
-            <td class="rank-cell">#${index + 1}</td>
-            <td class="player-cell" style="font-weight: 700;">${display}</td>
-            <td class="goals-cell" style="color: var(--accent-green);">${cleans}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // Most Aggressive Leaderboard
-    const sortedAggressive = Object.entries(teamMatrix)
-      .map(([teamName, stats]) => {
-        const pts = stats.yellows + (stats.reds * 3);
-        return [teamName, pts];
-      })
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    if (sortedAggressive.length === 0) {
-      topAggressiveList.innerHTML = `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
-    } else {
-      topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
-        const display = getFifaDisplay(team);
-        return `
-          <tr>
-            <td class="rank-cell">#${index + 1}</td>
-            <td class="player-cell" style="font-weight: 700;">${display}</td>
-          </tr>
-        `;
-      }).join('');
-    }
+    topAggressiveList.innerHTML = placeholderTeams.map((team, idx) => `
+      <tr>
+        <td class="rank-cell">#${idx + 1}</td>
+        <td class="player-cell" style="font-weight: 700;">${getFifaDisplay(team)}</td>
+      </tr>
+    `).join('');
   }
 
   // Render list of matches for a specific team
@@ -965,6 +1036,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render Standings Group Widget for a specific team
   function renderGroupStandings(teamName) {
+    if (!groupsCached || groupsCached.length === 0) {
+      groupTitleEl.textContent = "// GROUP STANDINGS";
+      groupStandingsBody.innerHTML = `<tr><td colspan="5" class="text-center">Standings currently unavailable.</td></tr>`;
+      return;
+    }
     const selectedTeamId = teamNameToIdMap[teamName];
     if (!selectedTeamId) {
       groupTitleEl.textContent = "// GROUP STANDINGS";
