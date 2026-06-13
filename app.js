@@ -456,11 +456,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Process match datasets
       processMatches(gamesCached);
+      rebuildGroupStandings(gamesCached);
       renderTournamentStats();
+      
+      const currentSelected = teamSelector.value;
       populateTeamSelector();
+      if (currentSelected) {
+        teamSelector.value = currentSelected;
+        const stats = teamMatrix[currentSelected];
+        if (stats) {
+          teamGoalsEl.textContent = stats.goals;
+          teamYellowsEl.textContent = stats.yellows;
+          teamRedsEl.textContent = stats.reds;
+          renderTeamMatches(currentSelected);
+          renderGroupStandings(currentSelected);
+        }
+      }
+
       renderLeaderboards();
       renderMatchTicker(gamesCached);
-      setupEventListeners();
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell" style="color: var(--accent-red);">Error.</td></tr>`;
@@ -710,27 +724,57 @@ document.addEventListener('DOMContentLoaded', () => {
         teamIdToNameMap[homeId.toString()] = homeTeam;
         teamNameToIdMap[homeTeam] = homeId.toString();
         if (!teamMatrix[homeTeam]) {
-          teamMatrix[homeTeam] = { id: homeId.toString(), goals: 0, yellows: 0, reds: 0 };
+          teamMatrix[homeTeam] = { id: homeId.toString(), goals: 0, yellows: 0, reds: 0, points: 0, wins: 0, losses: 0, draws: 0, gd: 0 };
         }
       }
       if (awayTeam && awayId && !awayTeam.startsWith("Winner") && !awayTeam.startsWith("Runner-up") && !awayTeam.startsWith("3rd")) {
         teamIdToNameMap[awayId.toString()] = awayTeam;
         teamNameToIdMap[awayTeam] = awayId.toString();
         if (!teamMatrix[awayTeam]) {
-          teamMatrix[awayTeam] = { id: awayId.toString(), goals: 0, yellows: 0, reds: 0 };
+          teamMatrix[awayTeam] = { id: awayId.toString(), goals: 0, yellows: 0, reds: 0, points: 0, wins: 0, losses: 0, draws: 0, gd: 0 };
         }
       }
 
-      const isFinished = match.finished === "TRUE" || match.time_elapsed === "finished";
-      const homeScore = parseInt(match.home_score) || 0;
-      const awayScore = parseInt(match.away_score) || 0;
+      // Explicitly filter by status
+      const eventStatus = match.eventStatus || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "done" : "not started");
+      const status = match.status || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "completed" : "not started");
 
-      if (isFinished) {
+      if (eventStatus === "done" || status === "completed") {
+        const homeScore = parseInt(match.home_score) || 0;
+        const awayScore = parseInt(match.away_score) || 0;
+
         completedGamesCount++;
         // Goals Accumulation
         globalStats.totalGoals += (homeScore + awayScore);
         if (homeTeam && teamMatrix[homeTeam]) teamMatrix[homeTeam].goals += homeScore;
         if (awayTeam && teamMatrix[awayTeam]) teamMatrix[awayTeam].goals += awayScore;
+
+        // Native Points, Wins, Losses, Draws, and Goal Difference Calculations
+        const goalDiff = homeScore - awayScore;
+        if (homeTeam && teamMatrix[homeTeam]) {
+          teamMatrix[homeTeam].gd += goalDiff;
+          if (homeScore > awayScore) {
+            teamMatrix[homeTeam].wins += 1;
+            teamMatrix[homeTeam].points += 3;
+          } else if (homeScore < awayScore) {
+            teamMatrix[homeTeam].losses += 1;
+          } else {
+            teamMatrix[homeTeam].draws += 1;
+            teamMatrix[homeTeam].points += 1;
+          }
+        }
+        if (awayTeam && teamMatrix[awayTeam]) {
+          teamMatrix[awayTeam].gd -= goalDiff;
+          if (awayScore > homeScore) {
+            teamMatrix[awayTeam].wins += 1;
+            teamMatrix[awayTeam].points += 3;
+          } else if (awayScore < homeScore) {
+            teamMatrix[awayTeam].losses += 1;
+          } else {
+            teamMatrix[awayTeam].draws += 1;
+            teamMatrix[awayTeam].points += 1;
+          }
+        }
 
         // Clean Sheets Accumulation
         if (homeTeam && !homeTeam.startsWith("Winner") && !homeTeam.startsWith("Runner-up") && !homeTeam.startsWith("3rd")) {
@@ -799,6 +843,78 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Rebuild group standings dynamically from live/completed match data supporting Groups A through L
+  function rebuildGroupStandings(matches) {
+    if (!groupsCached || groupsCached.length === 0) return;
+
+    // Reset statistics for all teams in all groups to 0
+    groupsCached.forEach(group => {
+      if (group.teams && Array.isArray(group.teams)) {
+        group.teams.forEach(team => {
+          team.mp = 0;
+          team.w = 0;
+          team.l = 0;
+          team.d = 0;
+          team.gf = 0;
+          team.ga = 0;
+          team.gd = 0;
+          team.pts = 0;
+        });
+      }
+    });
+
+    // Process all completed matches to update groupsCached
+    matches.forEach(match => {
+      const eventStatus = match.eventStatus || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "done" : "not started");
+      const status = match.status || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "completed" : "not started");
+
+      if (eventStatus === "done" || status === "completed") {
+        const homeId = match.home_team_id ? match.home_team_id.toString() : null;
+        const awayId = match.away_team_id ? match.away_team_id.toString() : null;
+        const homeScore = parseInt(match.home_score) || 0;
+        const awayScore = parseInt(match.away_score) || 0;
+
+        if (!homeId || !awayId) return;
+
+        const updateTeamInGroup = (teamId, scoreFor, scoreAgainst, result) => {
+          for (let group of groupsCached) {
+            if (group.teams && Array.isArray(group.teams)) {
+              const team = group.teams.find(t => t.team_id.toString() === teamId);
+              if (team) {
+                team.mp = (parseInt(team.mp) || 0) + 1;
+                team.gf = (parseInt(team.gf) || 0) + scoreFor;
+                team.ga = (parseInt(team.ga) || 0) + scoreAgainst;
+                team.gd = team.gf - team.ga;
+                
+                if (result === 'w') {
+                  team.w = (parseInt(team.w) || 0) + 1;
+                  team.pts = (parseInt(team.pts) || 0) + 3;
+                } else if (result === 'l') {
+                  team.l = (parseInt(team.l) || 0) + 1;
+                } else if (result === 'd') {
+                  team.d = (parseInt(team.d) || 0) + 1;
+                  team.pts = (parseInt(team.pts) || 0) + 1;
+                }
+                break;
+              }
+            }
+          }
+        };
+
+        if (homeScore > awayScore) {
+          updateTeamInGroup(homeId, homeScore, awayScore, 'w');
+          updateTeamInGroup(awayId, awayScore, homeScore, 'l');
+        } else if (homeScore < awayScore) {
+          updateTeamInGroup(homeId, homeScore, awayScore, 'l');
+          updateTeamInGroup(awayId, awayScore, homeScore, 'w');
+        } else {
+          updateTeamInGroup(homeId, homeScore, awayScore, 'd');
+          updateTeamInGroup(awayId, awayScore, homeScore, 'd');
+        }
+      }
+    });
+  }
+
   // Render top row metrics
   function renderTournamentStats() {
     totalGoalsEl.textContent = globalStats.totalGoals;
@@ -829,159 +945,92 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render both leaderboards
   function renderLeaderboards() {
-    try {
-      if (!gamesCached || gamesCached.length === 0) {
-        renderLeaderboardsPlaceholder();
-        return;
-      }
+    // Scorers Leaderboard
+    const sortedScorers = Object.entries(playerGoalsMap || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
 
-      // Scorers Leaderboard
-      let sortedScorers = [];
-      try {
-        sortedScorers = Object.entries(playerGoalsMap || {})
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5);
-      } catch (e) {
-        console.warn("Failed to sort scorers:", e);
-      }
-
-      if (sortedScorers.length === 0) {
-        topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
-      } else {
-        topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => {
-          const country = playerToCountryMap[player];
-          const flag = country ? (countryFlags[country] || "") : "";
-          const playerDisplay = flag ? `${flag} ${player}` : player;
-          return `
-            <tr>
-              <td class="rank-cell">#${index + 1}</td>
-              <td class="player-cell">${playerDisplay}</td>
-              <td class="goals-cell">${goals}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      // Assists Leaderboard
-      let sortedAssisters = [];
-      try {
-        sortedAssisters = Object.entries(playerAssistsMap || {})
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5);
-      } catch (e) {
-        console.warn("Failed to sort assisters:", e);
-      }
-
-      if (sortedAssisters.length === 0) {
-        topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
-      } else {
-        topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => {
-          const country = playerToCountryMap[player];
-          const flag = country ? (countryFlags[country] || "") : "";
-          const playerDisplay = flag ? `${flag} ${player}` : player;
-          return `
-            <tr>
-              <td class="rank-cell">#${index + 1}</td>
-              <td class="player-cell">${playerDisplay}</td>
-              <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      // Clean Sheets Leaderboard
-      let sortedCleans = [];
-      try {
-        sortedCleans = Object.entries(cleanSheetsMap || {})
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5);
-      } catch (e) {
-        console.warn("Failed to sort clean sheets:", e);
-      }
-
-      if (sortedCleans.length === 0) {
-        topCleansList.innerHTML = `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
-      } else {
-        topCleansList.innerHTML = sortedCleans.map(([team, cleans], index) => {
-          const display = getFifaDisplay(team);
-          return `
-            <tr>
-              <td class="rank-cell">#${index + 1}</td>
-              <td class="player-cell" style="font-weight: 700;">${display}</td>
-              <td class="goals-cell" style="color: var(--accent-green);">${cleans}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      // Most Aggressive Leaderboard
-      let sortedAggressive = [];
-      try {
-        sortedAggressive = Object.entries(teamMatrix || {})
-          .map(([teamName, stats]) => {
-            const pts = (stats.yellows || 0) + ((stats.reds || 0) * 3);
-            return [teamName, pts];
-          })
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5);
-      } catch (e) {
-        console.warn("Failed to sort aggressive teams:", e);
-      }
-
-      if (sortedAggressive.length === 0) {
-        topAggressiveList.innerHTML = `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
-      } else {
-        topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
-          const display = getFifaDisplay(team);
-          return `
-            <tr>
-              <td class="rank-cell">#${index + 1}</td>
-              <td class="player-cell" style="font-weight: 700;">${display}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-    } catch (error) {
-      console.error("Leaderboard rendering crashed, rendering fallback placeholders:", error);
-      renderLeaderboardsPlaceholder();
+    if (sortedScorers.length === 0) {
+      topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
+    } else {
+      topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => {
+        const country = playerToCountryMap[player];
+        const flag = country ? (countryFlags[country] || "") : "";
+        const playerDisplay = flag ? `${flag} ${player}` : player;
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell">${playerDisplay}</td>
+            <td class="goals-cell">${goals}</td>
+          </tr>
+        `;
+      }).join('');
     }
-  }
 
-  // Visual Re-Render Fallback Helper: render placeholder tables using live teams that *have* played
-  function renderLeaderboardsPlaceholder() {
-    const playedTeams = Object.keys(teamMatrix || {});
-    const placeholderTeams = playedTeams.length >= 5 ? playedTeams.slice(0, 5) : ["Mexico", "South Korea", "Czech Republic", "Canada", "Bosnia and Herzegovina"];
-    
-    topScorersList.innerHTML = placeholderTeams.map((team, idx) => `
-      <tr>
-        <td class="rank-cell">#${idx + 1}</td>
-        <td class="player-cell">${countryFlags[team] || "🏳️"} ${team} Player</td>
-        <td class="goals-cell">0</td>
-      </tr>
-    `).join('');
+    // Assists Leaderboard
+    const sortedAssisters = Object.entries(playerAssistsMap || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
 
-    topAssistsList.innerHTML = placeholderTeams.map((team, idx) => `
-      <tr>
-        <td class="rank-cell">#${idx + 1}</td>
-        <td class="player-cell">${countryFlags[team] || "🏳️"} ${team} Assister</td>
-        <td class="goals-cell" style="color: var(--primary-accent);">0</td>
-      </tr>
-    `).join('');
+    if (sortedAssisters.length === 0) {
+      topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
+    } else {
+      topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => {
+        const country = playerToCountryMap[player];
+        const flag = country ? (countryFlags[country] || "") : "";
+        const playerDisplay = flag ? `${flag} ${player}` : player;
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell">${playerDisplay}</td>
+            <td class="goals-cell" style="color: var(--primary-accent);">${assists}</td>
+          </tr>
+        `;
+      }).join('');
+    }
 
-    topCleansList.innerHTML = placeholderTeams.map((team, idx) => `
-      <tr>
-        <td class="rank-cell">#${idx + 1}</td>
-        <td class="player-cell" style="font-weight: 700;">${getFifaDisplay(team)}</td>
-        <td class="goals-cell" style="color: var(--accent-green);">0</td>
-      </tr>
-    `).join('');
+    // Clean Sheets Leaderboard
+    const sortedCleans = Object.entries(cleanSheetsMap || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
 
-    topAggressiveList.innerHTML = placeholderTeams.map((team, idx) => `
-      <tr>
-        <td class="rank-cell">#${idx + 1}</td>
-        <td class="player-cell" style="font-weight: 700;">${getFifaDisplay(team)}</td>
-      </tr>
-    `).join('');
+    if (sortedCleans.length === 0) {
+      topCleansList.innerHTML = `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
+    } else {
+      topCleansList.innerHTML = sortedCleans.map(([team, cleans], index) => {
+        const display = getFifaDisplay(team);
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell" style="font-weight: 700;">${display}</td>
+            <td class="goals-cell" style="color: var(--accent-green);">${cleans}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Most Aggressive Leaderboard
+    const sortedAggressive = Object.entries(teamMatrix || {})
+      .map(([teamName, stats]) => {
+        const pts = (stats.yellows || 0) + ((stats.reds || 0) * 3);
+        return [teamName, pts];
+      })
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    if (sortedAggressive.length === 0) {
+      topAggressiveList.innerHTML = `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
+    } else {
+      topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
+        const display = getFifaDisplay(team);
+        return `
+          <tr>
+            <td class="rank-cell">#${index + 1}</td>
+            <td class="player-cell" style="font-weight: 700;">${display}</td>
+          </tr>
+        `;
+      }).join('');
+    }
   }
 
   // Render list of matches for a specific team
@@ -1110,6 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initialize
+  setupEventListeners();
   initDashboard();
 
   // Poll for updates every 30 seconds
