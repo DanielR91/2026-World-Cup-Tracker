@@ -643,8 +643,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Parse player name out of a scorer string (e.g. "J. Quiñones 9'" -> "J. Quiñones")
   function extractPlayerName(scorer) {
-    const match = scorer.match(/^(.*?)\s+\d+'?$/);
-    return match ? match[1].trim() : scorer.trim();
+    if (!scorer) return "";
+    let clean = scorer.replace(/\s*\((?:OG|P|og|p)\)\s*$/i, '').trim();
+    clean = clean.replace(/\s+\d+['’]?(?:\+\d+['’]?)?$/, '').trim();
+    return clean;
   }
 
   // Generate cards deterministically based on match data (since API doesn't provide them)
