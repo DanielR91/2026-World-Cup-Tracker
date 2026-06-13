@@ -735,11 +735,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Explicitly filter by status
-      const eventStatus = match.eventStatus || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "done" : "not started");
-      const status = match.status || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "completed" : "not started");
+      // Skip the row completely if it is "not started"
+      const eventStatus = match.eventStatus;
+      const status = match.status;
+      if (eventStatus === "not started" || status === "not started" || match.finished === "FALSE" || match.time_elapsed === "notstarted") {
+        return;
+      }
 
-      if (eventStatus === "done" || status === "completed") {
+      // Only run aggregation math if eventStatus === "done" or status === "completed" (or finished/finished fallback)
+      if (eventStatus === "done" || status === "completed" || match.finished === "TRUE" || match.time_elapsed === "finished") {
         const homeScore = parseInt(match.home_score) || 0;
         const awayScore = parseInt(match.away_score) || 0;
 
@@ -865,10 +869,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Process all completed matches to update groupsCached
     matches.forEach(match => {
-      const eventStatus = match.eventStatus || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "done" : "not started");
-      const status = match.status || (match.finished === "TRUE" || match.time_elapsed === "finished" ? "completed" : "not started");
+      const eventStatus = match.eventStatus;
+      const status = match.status;
+      if (eventStatus === "not started" || status === "not started" || match.finished === "FALSE" || match.time_elapsed === "notstarted") {
+        return;
+      }
 
-      if (eventStatus === "done" || status === "completed") {
+      if (eventStatus === "done" || status === "completed" || match.finished === "TRUE" || match.time_elapsed === "finished") {
         const homeId = match.home_team_id ? match.home_team_id.toString() : null;
         const awayId = match.away_team_id ? match.away_team_id.toString() : null;
         const homeScore = parseInt(match.home_score) || 0;
@@ -945,15 +952,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render both leaderboards
   function renderLeaderboards() {
+    const container = document.querySelector('.leaderboards-split');
+    if (!container) return;
+
     // Scorers Leaderboard
     const sortedScorers = Object.entries(playerGoalsMap || {})
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
+    let scorersHtml = `
+      <div class="leaderboard-half">
+        <h4 class="leaderboard-title">TOP SCORERS</h4>
+        <div class="leaderboard-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>RANK</th>
+                <th>PLAYER</th>
+                <th class="text-right">GOALS</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
     if (sortedScorers.length === 0) {
-      topScorersList.innerHTML = `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
+      scorersHtml += `<tr><td colspan="3" class="loading-cell">No goals.</td></tr>`;
     } else {
-      topScorersList.innerHTML = sortedScorers.map(([player, goals], index) => {
+      scorersHtml += sortedScorers.map(([player, goals], index) => {
         const country = playerToCountryMap[player];
         const flag = country ? (countryFlags[country] || "") : "";
         const playerDisplay = flag ? `${flag} ${player}` : player;
@@ -966,16 +991,32 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }).join('');
     }
+    scorersHtml += `</tbody></table></div></div>`;
 
     // Assists Leaderboard
     const sortedAssisters = Object.entries(playerAssistsMap || {})
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
+    let assistsHtml = `
+      <div class="leaderboard-half">
+        <h4 class="leaderboard-title">TOP ASSISTS</h4>
+        <div class="leaderboard-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>RANK</th>
+                <th>PLAYER</th>
+                <th class="text-right">ASSISTS</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
     if (sortedAssisters.length === 0) {
-      topAssistsList.innerHTML = `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
+      assistsHtml += `<tr><td colspan="3" class="loading-cell">No assists.</td></tr>`;
     } else {
-      topAssistsList.innerHTML = sortedAssisters.map(([player, assists], index) => {
+      assistsHtml += sortedAssisters.map(([player, assists], index) => {
         const country = playerToCountryMap[player];
         const flag = country ? (countryFlags[country] || "") : "";
         const playerDisplay = flag ? `${flag} ${player}` : player;
@@ -988,16 +1029,32 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }).join('');
     }
+    assistsHtml += `</tbody></table></div></div>`;
 
     // Clean Sheets Leaderboard
     const sortedCleans = Object.entries(cleanSheetsMap || {})
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
+    let cleansHtml = `
+      <div class="leaderboard-half">
+        <h4 class="leaderboard-title">TOP CLEAN SHEETS</h4>
+        <div class="leaderboard-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>RANK</th>
+                <th>TEAM</th>
+                <th class="text-right">CLEANS</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
     if (sortedCleans.length === 0) {
-      topCleansList.innerHTML = `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
+      cleansHtml += `<tr><td colspan="3" class="loading-cell">No cleans.</td></tr>`;
     } else {
-      topCleansList.innerHTML = sortedCleans.map(([team, cleans], index) => {
+      cleansHtml += sortedCleans.map(([team, cleans], index) => {
         const display = getFifaDisplay(team);
         return `
           <tr>
@@ -1008,6 +1065,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }).join('');
     }
+    cleansHtml += `</tbody></table></div></div>`;
 
     // Most Aggressive Leaderboard
     const sortedAggressive = Object.entries(teamMatrix || {})
@@ -1018,10 +1076,24 @@ document.addEventListener('DOMContentLoaded', () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
+    let aggressiveHtml = `
+      <div class="leaderboard-half">
+        <h4 class="leaderboard-title">MOST AGGRESSIVE</h4>
+        <div class="leaderboard-container">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>RANK</th>
+                <th>TEAM</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
     if (sortedAggressive.length === 0) {
-      topAggressiveList.innerHTML = `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
+      aggressiveHtml += `<tr><td colspan="2" class="loading-cell">No cards.</td></tr>`;
     } else {
-      topAggressiveList.innerHTML = sortedAggressive.map(([team, pts], index) => {
+      aggressiveHtml += sortedAggressive.map(([team, pts], index) => {
         const display = getFifaDisplay(team);
         return `
           <tr>
@@ -1031,6 +1103,10 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }).join('');
     }
+    aggressiveHtml += `</tbody></table></div></div>`;
+
+    // Complete DOM refresh of the container
+    container.innerHTML = scorersHtml + assistsHtml + cleansHtml + aggressiveHtml;
   }
 
   // Render list of matches for a specific team
